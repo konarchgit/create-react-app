@@ -4,8 +4,6 @@
   box-sizing: border-box;
 }
 
-
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
@@ -440,5 +438,164 @@ body {
   .chip {
     padding: 10px 16px;
     font-size: 13px;
+  }
+
+  /* Voice button styles */
+  .voice-button {
+    padding: 10px 15px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+  }
+
+  .voice-button:hover:not(:disabled) {
+    background-color: #45a049;
+    transform: scale(1.05);
+  }
+
+  .voice-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+
+  .voice-button.listening {
+    background-color: #f44336;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+    }
+  }
+
+  .input-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  /* Voice button styles */
+  .voice-button {
+    padding: 10px 15px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+  }
+
+  .voice-button:hover:not(:disabled) {
+    background-color: #45a049;
+    transform: scale(1.05);
+  }
+
+  .voice-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+
+  .voice-button.listening {
+    background-color: #f44336;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+    }
+  }
+
+  .input-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Auto-speak toggle button */
+  .header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .auto-speak-button {
+    padding: 8px 12px;
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s ease;
+  }
+
+  .auto-speak-button:hover {
+    background-color: #1976d2;
+    transform: scale(1.05);
+  }
+
+  .auto-speak-button.active {
+    background-color: #4caf50;
+  }
+
+  /* Individual message speak button */
+  .message-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .speak-button-small {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+  }
+
+  .speak-button-small:hover {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  /* Speaking indicator */
+  .speaking-indicator {
+    margin-left: 15px;
+    color: #4caf50;
+    font-weight: bold;
+    animation: fadeInOut 1.5s infinite;
+  }
+
+  @keyframes fadeInOut {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 }
