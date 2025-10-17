@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./App.css";
 
-
-
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -13,13 +11,64 @@ function App() {
     () => `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   );
 
+  // Voice recording states
+  const [isListening, setIsListening] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const recognitionRef = useRef(null);
+
+  // Text-to-speech states
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(true); // Toggle auto-speak
+  const synthRef = useRef(window.speechSynthesis);
+
   const messagesEndRef = useRef(null);
 
-  // Replace with your n8n webhook URL
   const WEBHOOK_URL =
     "https://travel2026.app.n8n.cloud/webhook/ba34c0ab-9dcc-4f49-bd09-dffd78c607ea";
 
-  // Auto-scroll to bottom when messages change
+  // Initialize Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      setIsSupported(true);
+      const recognition = new SpeechRecognition();
+
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + " ";
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        setInput(finalTranscript || interimTranscript);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setError(`Voice recognition error: ${event.error}`);
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -28,12 +77,88 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Text-to-Speech function
+  const speakText = (text) => {
+    // Stop any ongoing speech
+    if (synthRef.current.speaking) {
+      synthRef.current.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Configure speech settings
+    utterance.rate = 1.0; // Speed (0.1 to 10)
+    utterance.pitch = 1.0; // Pitch (0 to 2)
+    utterance.volume = 1.0; // Volume (0 to 1)
+    utterance.lang = "en-US"; // Language
+
+    // Get available voices and select a preferred one
+    const voices = synthRef.current.getVoices();
+    if (voices.length > 0) {
+      // You can filter for specific voices, e.g., Google UK English Female
+      const preferredVoice = voices.find(
+        (voice) =>
+          voice.name.includes("Google") || voice.name.includes("Female")
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = (event) => {
+      console.error("Speech synthesis error:", event);
+      setIsSpeaking(false);
+    };
+
+    // Speak the text
+    synthRef.current.speak(utterance);
+  };
+
+  // Stop speaking
+  const stopSpeaking = () => {
+    if (synthRef.current.speaking) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Toggle voice recording
+  const toggleVoiceRecording = () => {
+    if (!isSupported) {
+      setError(
+        "Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari."
+      );
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setError(null);
+      setInput("");
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!input.trim()) return;
 
-    // Create user message
+    // Stop any ongoing speech when user sends a new message
+    stopSpeaking();
+
     const userMessage = {
       id: Date.now(),
       text: input,
@@ -59,16 +184,14 @@ function App() {
           headers: {
             "Content-Type": "application/json",
           },
-          timeout: 120000, // 2 minutes timeout for AI processing
+          timeout: 120000,
         }
       );
 
-      // Check if response has data
       if (!response.data) {
         throw new Error("No response from server");
       }
 
-      // Extract message from various possible response formats
       let aiMessageText =
         response.data.message ||
         response.data.output ||
@@ -76,7 +199,6 @@ function App() {
         response.data.response ||
         JSON.stringify(response.data);
 
-      // If response is stringified JSON, try to parse it
       if (typeof aiMessageText === "string" && aiMessageText.startsWith("{")) {
         try {
           const parsed = JSON.parse(aiMessageText);
@@ -87,7 +209,6 @@ function App() {
         }
       }
 
-      // Create AI response message
       const aiMessage = {
         id: Date.now() + 1,
         text: aiMessageText,
@@ -96,6 +217,14 @@ function App() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Automatically speak the AI response if autoSpeak is enabled
+      if (autoSpeak) {
+        // Small delay to ensure message is rendered
+        setTimeout(() => {
+          speakText(aiMessageText);
+        }, 100);
+      }
     } catch (err) {
       console.error("Error:", err);
 
@@ -139,6 +268,16 @@ function App() {
   const clearChat = () => {
     setMessages([]);
     setError(null);
+    stopSpeaking();
+  };
+
+  // Manual speak/stop for individual messages
+  const handleSpeakMessage = (text) => {
+    if (isSpeaking) {
+      stopSpeaking();
+    } else {
+      speakText(text);
+    }
   };
 
   return (
@@ -149,15 +288,24 @@ function App() {
             <h1>🏨 AI Hotel Assistant</h1>
             <p>Ask me anything about hotels and travel!</p>
           </div>
-          {messages.length > 0 && (
+          <div className="header-buttons">
             <button
-              className="clear-button"
-              onClick={clearChat}
-              title="Clear chat"
+              className={`auto-speak-button ${autoSpeak ? "active" : ""}`}
+              onClick={() => setAutoSpeak(!autoSpeak)}
+              title={autoSpeak ? "Disable auto-speak" : "Enable auto-speak"}
             >
-              🗑️
+              {autoSpeak ? "🔊" : "🔇"}
             </button>
-          )}
+            {messages.length > 0 && (
+              <button
+                className="clear-button"
+                onClick={clearChat}
+                title="Clear chat"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="messages-container">
@@ -205,11 +353,24 @@ function App() {
               </div>
               <div className="message-content">
                 <div className="message-text">{msg.text}</div>
-                <div className="message-time">
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                <div className="message-footer">
+                  <div className="message-time">
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  {msg.sender === "ai" && !msg.isError && (
+                    <button
+                      className="speak-button-small"
+                      onClick={() => handleSpeakMessage(msg.text)}
+                      title={
+                        isSpeaking ? "Stop speaking" : "Speak this message"
+                      }
+                    >
+                      {isSpeaking ? "⏹️" : "🔊"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -248,11 +409,22 @@ function App() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
+              placeholder={
+                isListening ? "Listening..." : "Type your message..."
+              }
               disabled={loading}
               className="message-input"
               autoFocus
             />
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              disabled={loading}
+              className={`voice-button ${isListening ? "listening" : ""}`}
+              title={isListening ? "Stop recording" : "Start voice recording"}
+            >
+              {isListening ? "🔴" : "🎤"}
+            </button>
             <button
               type="submit"
               disabled={loading || !input.trim()}
@@ -265,6 +437,9 @@ function App() {
 
           <div className="footer-info">
             <small>Session ID: {sessionId.substring(0, 20)}...</small>
+            {isSpeaking && (
+              <small className="speaking-indicator">🔊 Speaking...</small>
+            )}
           </div>
         </div>
       </div>
