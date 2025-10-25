@@ -24,7 +24,7 @@ function App() {
   const messagesEndRef = useRef(null);
 
   const WEBHOOK_URL =
-    "https://travel2026.app.n8n.cloud/webhook/ba34c0ab-9dcc-4f49-bd09-dffd78c607ea";
+    "https://travelv1.app.n8n.cloud/webhook/ba34c0ab-9dcc-4f49-bd09-dffd78c607ea";
 
   // Initialize Speech Recognition
   useEffect(() => {
